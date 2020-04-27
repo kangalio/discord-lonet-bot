@@ -1,0 +1,5 @@
+token.txt
+secret
+index.json
+**/__pycache__
+.mypy_cache
