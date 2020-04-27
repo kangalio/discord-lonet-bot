@@ -83,7 +83,6 @@ async def periodically_check(channel):
 			await channel.send(f"An error occurred: {e}")
 			logger.exception("Exception duh")
 		await asyncio.sleep(periodic_chart_interval)
-		
 
 @client.event
 async def on_message(msg):
@@ -98,8 +97,6 @@ async def on_ready():
 	print(f"{client.user} has connected to Discord!")
 
 index = Index.open("index.json")
-with open("token.txt") as f:
+with open("secret/token.txt") as f:
 	token = f.read().strip()
 client.run(token)
-
-

@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 
 def bs(*args, **kwargs):
-	return BeautifulSoup(*args, **kwargs, features="lxml") # change to html.parser if needed
+	return BeautifulSoup(*args, **kwargs, features="html.parser")
 
 class LonetSession:
 	def __init__(self):

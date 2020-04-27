@@ -107,4 +107,3 @@ def get_lernplan():
 		lernplan.themen[thema] = tasks
 	
 	return lernplan
- 
