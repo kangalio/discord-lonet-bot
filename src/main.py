@@ -63,7 +63,7 @@ async def check_lonet(channel) -> None:
 			
 			embed = discord.Embed(title=f"{thema}: {task.name}", url=task.link, description=description)
 			embed.add_field(name="Fällig", value=f"**{deadline_text}**", inline=False)
-			embed.set_footer(text="Hinzugefügt am " + datetime.strftime(datetime.now(), "%d.%M.%Y %H:%S"))
+			embed.set_footer(text="Hinzugefügt am " + datetime.strftime(datetime.now(), "%d.%m.%Y %H:%S"))
 			await channel.send(embed=embed)
 	print("Done checking lonet")
 	
@@ -75,7 +75,6 @@ is_activated = False
 periodic_chart_interval = 10 * 60 # in seconds
 
 async def periodically_check(channel):
-	await channel.send("Bot was started")
 	while True:
 		try:
 			await check_lonet(channel)
@@ -88,9 +87,13 @@ async def periodically_check(channel):
 async def on_message(msg):
 	global is_activated
 	
-	if msg.content == "lonet activate" and not is_activated:
-		is_activated = True
-		await periodically_check(msg.channel)
+	if msg.content == "lonet activate":
+		if is_activated:
+			await msg.channel.send("Bot is already started :thinking:")
+		else:
+			is_activated = True
+			await msg.channel.send("Bot was started")
+			await periodically_check(msg.channel)
 
 @client.event
 async def on_ready():

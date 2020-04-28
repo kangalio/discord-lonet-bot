@@ -97,10 +97,10 @@ def get_lernplan():
 		url = option["value"]
 		
 		html = session.navigate(url, peek=True)
-		# ~ print(html.prettify())
 		table = html.find("table", class_="table_list")
 		if table:
-			tasks = parse_thema_tbody(session, thema, table)
+			tbody = table.find("tbody") or table
+			tasks = parse_thema_tbody(session, thema, tbody)
 		else:
 			tasks = []
 		
