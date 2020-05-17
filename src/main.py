@@ -72,7 +72,7 @@ async def check_lonet(channel) -> None:
 client = discord.Client()
 logger = logging.getLogger()
 is_activated = False
-periodic_chart_interval = 10 * 60 # in seconds
+periodic_check_interval = 10 * 60 # in seconds
 
 async def periodically_check(channel):
 	while True:
@@ -81,7 +81,7 @@ async def periodically_check(channel):
 		except Exception as e:
 			await channel.send(f"An error occurred: {e}")
 			logger.exception("Exception duh")
-		await asyncio.sleep(periodic_chart_interval)
+		await asyncio.sleep(periodic_check_interval)
 
 @client.event
 async def on_message(msg):
