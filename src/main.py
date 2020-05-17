@@ -40,13 +40,13 @@ class Index:
 			"registered": datetime.now().isoformat(),
 		})
 
-async def check_lonet(channel) -> None:
+async def check_lonet(channel, refresh=False) -> None:
 	lernplan = get_lernplan()
 	print(f"Checking lonet ({datetime.now()})")
 	for thema, tasks in lernplan.themen.items():
 		for task in tasks:
 			print(f"task: {task.name} ({thema})")
-			if index.is_task_known(thema, task):
+			if index.is_task_known(thema, task) and not refresh:
 				print(f"(known)")
 				continue # it's a known task, no need to print again
 			index.register_task(thema, task)
@@ -74,10 +74,12 @@ logger = logging.getLogger()
 is_activated = False
 periodic_check_interval = 10 * 60 # in seconds
 
-async def periodically_check(channel):
+async def periodically_check(channel, refresh_on_first_run=False):
+	has_refreshed = False
 	while True:
 		try:
-			await check_lonet(channel)
+			should_refresh = refresh_on_first_run and not has_refreshed
+			await check_lonet(channel, refresh=should_refresh)
 		except Exception as e:
 			await channel.send(f"An error occurred: {e}")
 			logger.exception("Exception duh")
@@ -87,17 +89,18 @@ async def periodically_check(channel):
 async def on_message(msg):
 	global is_activated
 	
-	if msg.content == "lonet activate":
+	if msg.content.startswith("lonet activate"):
 		if is_activated:
 			await msg.channel.send("Bot is already started :thinking:")
 		else:
 			is_activated = True
 			await msg.channel.send("Bot was started")
-			await periodically_check(msg.channel)
+			await periodically_check(msg.channel, refresh_on_first_run=("refresh" in msg.content))
 
 @client.event
 async def on_ready():
 	print(f"{client.user} has connected to Discord!")
+	print("Remember to activate the bot!")
 
 index = Index.open("index.json")
 with open("secret/token.txt") as f:
