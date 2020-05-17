@@ -27,19 +27,19 @@ class Index:
 		with open(filename, "w") as f:
 			json.dump(self._index, f, indent=2)
 	
-	def _get_task(self, thema: str, task: Task) -> Optional[Any]:
+	def _get_task_json(self, thema: str, task: Task) -> Optional[Any]:
 		for task_json in self._index["tasks"]:
 			if task_json["name"] == task.name and task_json["thema"] == thema:
 				return task_json
 		return None
 	
-	def is_task_known(*args, **kwargs) -> bool:
-		return self._get_task(*args, **kwargs) is not None
+	def is_task_known(self, *args, **kwargs) -> bool:
+		return self._get_task_json(*args, **kwargs) is not None
 	
 	def get_task_creation_datetime(self, *args, **kwargs) -> Optional[datetime]:
-		dt = self._get_task(*args, **kwargs)["registered"]
-		if dt:
-			return datetime.fromisoformat(dt)
+		task = self._get_task_json(*args, **kwargs)
+		if task:
+			return datetime.fromisoformat(task["registered"])
 		else:
 			return None
 	
@@ -57,18 +57,25 @@ async def check_lonet(channel, refresh=False) -> None:
 	all_tasks = []
 	for thema, tasks in lernplan.themen.items():
 		for task in tasks:
+			print(f"task: {task.name} ({thema})")
+			
+			task_was_known = index.is_task_known(thema, task)
 			index.register_task(thema, task)
-			tuple_ = (thema, task, index.get_task_creation_datetime(thema, task))
+			# if not refreshing, stop right here before this task gets written to the list of
+			# outputted tasks
+			if task_was_known and not refresh:
+				print(f"(skipping)")
+				continue
+			
+			creation_time = index.get_task_creation_datetime(thema, task)
+			if creation_time is None:
+				print("huh? this shouldn't happen")
+				continue
+			tuple_ = (thema, task, creation_time)
 			all_tasks.append(tuple_)
 	all_tasks.sort(key=lambda tuple_: tuple_[2])
 	
 	for thema, task, creation_time in all_tasks:
-		print(f"task: {task.name} ({thema})")
-		if index.is_task_known(thema, task):
-			print(f"(known)")
-			continue # it's a known task, no need to print again
-		index.register_task(thema, task)
-		
 		if task.deadline:
 			deadline_text = datetime.strftime(task.deadline, "%d.%M.%Y %H:%S")
 		else:
