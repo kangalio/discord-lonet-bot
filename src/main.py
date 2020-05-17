@@ -105,6 +105,7 @@ async def periodically_check(channel, refresh_on_first_run=False):
 		try:
 			should_refresh = refresh_on_first_run and not has_refreshed
 			await check_lonet(channel, refresh=should_refresh)
+			has_refreshed = True
 		except Exception as e:
 			await channel.send(f"An error occurred: {e}")
 			logger.exception("Exception duh")
