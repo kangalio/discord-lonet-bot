@@ -63,7 +63,7 @@ async def check_lonet(channel) -> None:
 			
 			embed = discord.Embed(title=f"{thema}: {task.name}", url=task.link, description=description)
 			embed.add_field(name="Fällig", value=f"**{deadline_text}**", inline=False)
-			embed.set_footer(text="Hinzugefügt am " + datetime.strftime(datetime.now(), "%d.%m.%Y %H:%S"))
+			embed.set_footer(text="Hinzugefügt am " + datetime.strftime(datetime.now(), "%d.%m.%Y %H:%M"))
 			await channel.send(embed=embed)
 	print("Done checking lonet")
 	
