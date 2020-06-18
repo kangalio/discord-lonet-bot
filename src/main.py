@@ -21,6 +21,12 @@ class Index:
 		if os.path.exists(filename):
 			with open(filename) as f:
 				index._index = json.load(f)
+		
+		# Remove duplicate entries
+		index._index["tasks"] = list({(task["thema"], task["name"]): task for task in index._index["tasks"]}.values())
+		
+		# ~ print("Read index {}".format(json.dumps(index._index, indent=4)))
+		
 		return index
 	
 	def save(self, filename: str) -> None:
@@ -36,21 +42,27 @@ class Index:
 	def is_task_known(self, *args, **kwargs) -> bool:
 		return self._get_task_json(*args, **kwargs) is not None
 	
+	# Returns None if the task creation datetime is unknown
 	def get_task_creation_datetime(self, *args, **kwargs) -> Optional[datetime]:
 		task = self._get_task_json(*args, **kwargs)
-		if task:
+		if not task:
+			raise Exception("Task doesn't exist")
+		
+		if task["registered"]:
 			return datetime.fromisoformat(task["registered"])
 		else:
 			return None
 	
-	def register_task(self, thema: str, task: Task) -> None:
+	def register_task(self, thema: str, task: Task, is_first_run=False) -> None:
+		if self.is_task_known(thema, task): return # safety mechanism to prevent spamming the index
+		
 		self._index["tasks"].append({
 			"name": task.name,
 			"thema": thema,
-			"registered": datetime.now().isoformat(),
+			"registered": None if is_first_run else datetime.now().isoformat(), # we can't know if this is first run
 		})
 
-async def check_lonet(channel, refresh=False) -> None:
+async def check_lonet(channel, refresh=False, is_first_run=False) -> None:
 	lernplan = get_lernplan()
 	print(f"Checking lonet ({datetime.now()})")
 	
@@ -60,7 +72,8 @@ async def check_lonet(channel, refresh=False) -> None:
 			print(f"task: {task.name} ({thema})")
 			
 			task_was_known = index.is_task_known(thema, task)
-			index.register_task(thema, task)
+			if not task_was_known:
+				index.register_task(thema, task, is_first_run=is_first_run)
 			# if not refreshing, stop right here before this task gets written to the list of
 			# outputted tasks
 			if task_was_known and not refresh:
@@ -68,18 +81,22 @@ async def check_lonet(channel, refresh=False) -> None:
 				continue
 			
 			creation_time = index.get_task_creation_datetime(thema, task)
-			if creation_time is None:
-				print("huh? this shouldn't happen")
-				continue
-			tuple_ = (thema, task, creation_time)
+			sort_key = creation_time or datetime.now()
+			
+			tuple_ = (thema, task, creation_time, sort_key)
 			all_tasks.append(tuple_)
-	all_tasks.sort(key=lambda tuple_: tuple_[2])
+	all_tasks.sort(key=lambda tuple_: tuple_[3])
 	
-	for thema, task, creation_time in all_tasks:
+	for thema, task, creation_time, _sort_key in all_tasks:
 		if task.deadline:
 			deadline_text = datetime.strftime(task.deadline, "%d.%M.%Y %H:%S")
 		else:
 			deadline_text = "---"
+		
+		if creation_time:
+			creation_text = datetime.strftime(creation_time, "%d.%m.%Y %H:%M")
+		else:
+			creation_text = "<unbekannt>"
 		
 		description = task.description
 		if len(description) > 2048:
@@ -88,7 +105,7 @@ async def check_lonet(channel, refresh=False) -> None:
 		
 		embed = discord.Embed(title=f"{thema}: {task.name}", url=task.link, description=description)
 		embed.add_field(name="Fällig", value=f"**{deadline_text}**", inline=False)
-		embed.set_footer(text="Hinzugefügt am " + datetime.strftime(creation_time, "%d.%m.%Y %H:%M"))
+		embed.set_footer(text="Hinzugefügt am " + creation_text)
 		await channel.send(embed=embed)
 	print("Done checking lonet")
 	
@@ -100,12 +117,12 @@ is_activated = False
 periodic_check_interval = 10 * 60 # in seconds
 
 async def periodically_check(channel, refresh_on_first_run=False):
-	has_refreshed = False
+	is_first_run = True
 	while True:
 		try:
-			should_refresh = refresh_on_first_run and not has_refreshed
-			await check_lonet(channel, refresh=should_refresh)
-			has_refreshed = True
+			should_refresh = refresh_on_first_run and is_first_run
+			await check_lonet(channel, refresh=should_refresh, is_first_run=is_first_run)
+			is_first_run = False
 		except Exception as e:
 			await channel.send(f"An error occurred: {e}")
 			logger.exception("Exception duh")
@@ -132,3 +149,8 @@ index = Index.open("index.json")
 with open("secret/token.txt") as f:
 	token = f.read().strip()
 client.run(token)
+
+# ~ for thema, tasks in get_lernplan().themen.items():
+	# ~ print(f"[{thema}]")
+	# ~ for task in tasks:
+		# ~ print(f"{task.name} - until {task.deadline}")

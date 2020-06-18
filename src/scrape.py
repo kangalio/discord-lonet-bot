@@ -42,7 +42,7 @@ def get_creds() -> Tuple[str, str]:
 
 def parse_thema_tbody(session, name, table):
 	tasks: List[Task] = []
-	for row in table.find_all("tr")[1:]: # skip header row
+	for row in table.find_all("tr"):
 		cells = row.find_all("td")
 		
 		task_name = cells[2].get_text()
@@ -99,7 +99,7 @@ def get_lernplan():
 		html = session.navigate(url, peek=True)
 		table = html.find("table", class_="table_list")
 		if table:
-			tbody = table.find("tbody") or table
+			tbody = table.find("tbody")
 			tasks = parse_thema_tbody(session, thema, tbody)
 		else:
 			tasks = []
